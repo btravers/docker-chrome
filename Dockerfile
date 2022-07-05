@@ -1,18 +1,23 @@
-FROM ubuntu:22.04
+FROM alpine:3.16
 
 EXPOSE 9222
 
-RUN apt-get update -qq \
-    && apt-get -qq dist-upgrade \
-    && apt-get install -qqy software-properties-common \
-    && add-apt-repository ppa:saiarcot895/chromium-beta \
-        && apt-get update -qq \
-    && apt-get -qqy --no-install-recommends install \
-        chromium-browser \
-        tini \
-    && fc-cache -f -v \
-    && apt-get -qq clean \
-    && rm -rf /var/lib/apt/lists/* /tmp/* /var/tmp/*
+RUN apk upgrade --no-cache --available \
+    && apk add --no-cache \
+      chromium
 
-ENTRYPOINT ["tini", "--"]
-CMD [ "chromium-browser", "--headless", "--disable-gpu", "–-no-first-run", "--disable-dev-shm-usage", "--disable-setuid-sandbox", "--no-sandbox", "--font-render-hinting=none", "--force-color-profile=srgb", "--remote-debugging-address=0.0.0.0", "--remote-debugging-port=9222" ]
+COPY ./fonts /tmp/fonts
+
+RUN mkdir -p /usr/share/fonts/truetype/ \
+    && install -m644 /tmp/fonts/Monserrat/Montserrat-VariableFont_wght.ttf /usr/share/fonts/truetype/ \
+    && install -m644 /tmp/fonts/Monserrat/Montserrat-Italic-VariableFont_wght.ttf /usr/share/fonts/truetype/ \
+    && rm -rf /tmp/fonts
+
+RUN mkdir -p /usr/src/app \
+    && adduser -D chrome \
+    && chown -R chrome:chrome /usr/src/app
+
+USER chrome
+WORKDIR /usr/src/app
+
+ENTRYPOINT [ "chromium-browser", "--headless", "--disable-gpu", "--disable-dev-shm-usage", "--disable-setuid-sandbox", "--no-sandbox", "--font-render-hinting=none", "--force-color-profile=srgb", "–-no-first-run", "--remote-debugging-address=0.0.0.0", "--remote-debugging-port=9222" ]
